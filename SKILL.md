@@ -1,56 +1,41 @@
 ---
 name: tailscale-remote
-description: >-
-  Remotely operate a desktop machine (macOS/Linux/Windows) from a server over
-  a Tailscale mesh: open pages in the user's browser, transfer files both ways,
-  and run remote commands. Use when the user wants to "see generated HTML in
-  the browser", "send files to/from the local machine", or "run a command
-  locally". Requires Tailscale mesh between server and desktop, plus
-  passwordless SSH from server to desktop. / 通过 Tailscale 组网从服务器远程
-  操作本机桌面：浏览器打开网页看效果、双向传文件、远程执行命令。
+description: 通过 Tailscale 组网从服务器远程操作本机桌面（macOS/Linux/Windows）：浏览器打开网页看效果、双向传文件、远程执行命令。适用于"把生成的 HTML 展示到用户浏览器""传文件到本机""在本机执行命令"等场景。需要服务器与本机已通过 Tailscale 组网，且服务器配置了到本机的 SSH 免密登录。
 ---
 
 # Tailscale Remote Skill
 
-Operate a desktop machine from a server over a Tailscale mesh — open pages in
-the user's browser, transfer files, run remote commands.
+通过 Tailscale 组网，从服务器远程操作本机桌面——打开浏览器看效果、传文件、执行命令。
 
-## Prerequisites (one-time setup)
+## 前置条件（一次性配置）
 
-1. **Tailscale mesh**: install and log in to Tailscale on both the server and
-   the desktop (macOS/Linux/Windows). Verify with `tailscale status`; the two
-   machines should ping each other. Mesh nodes get private 100.x.y.z
-   addresses — direct access without public exposure or SSH tunneling.
-2. **Passwordless SSH**: generate a key on the server (`ssh-keygen -t ed25519`),
-   append the public key to the desktop's `~/.ssh/authorized_keys`, and enable
-   remote login on the desktop (macOS: System Settings → General → Sharing →
-   Remote Login).
-3. **Configure environment variables** (or substitute the placeholders below):
+1. **Tailscale 组网**：服务器与本机（macOS/Linux/Windows）都安装并登录 Tailscale，两台机器互相 ping 通。
+   - 查看状态：`tailscale status`
+   - 组网后两台机器有内网 IP（100.x.y.z 网段），互访无需公网、无需 SSH 隧道。
+2. **SSH 免密**：服务器生成密钥（`ssh-keygen -t ed25519`），把公钥加入本机 `~/.ssh/authorized_keys`，并确认本机开启了远程登录（macOS：系统设置 → 通用 → 共享 → 远程登录）。
+3. **配置环境变量**（或用下方命令中的占位符替换）：
 
 ```bash
-# Recommended: add to your shell profile (~/.bashrc or ~/.zshrc)
-export MAC_HOST="user@100.x.y.z"        # Desktop: user@Tailscale IP
-export SERVER_TAILSCALE_IP="100.x.y.z"  # Server Tailscale IP (listen only on this)
+# 推荐写入 shell 配置（~/.bashrc 或 ~/.zshrc）
+export MAC_HOST="user@100.x.y.z"        # 本机：用户名@Tailscale IP
+export MAC_TAILSCALE_IP="100.x.y.z"     # 本机 Tailscale IP
+export SERVER_TAILSCALE_IP="100.x.y.z"  # 服务器 Tailscale IP（只监听该接口，不暴露公网）
 ```
 
-## Security rules (important)
+## 安全准则（重要）
 
-- **Listen only on the server's Tailscale interface** (`SERVER_TAILSCALE_IP`),
-  never on `0.0.0.0` — that would expose the service to the public internet.
-- Track the PID of any server you start and clean it up when done; put
-  temporary files in `/tmp/`.
-- Before running commands on the desktop, consider permissions and side
-  effects (`open` is harmless; `rm` is not).
+- **服务只监听服务器 Tailscale 接口**（`SERVER_TAILSCALE_IP`），绝不监听 `0.0.0.0` —— 否则暴露公网。
+- 用完的服务要记录 PID，及时清理；临时文件放 `/tmp/`。
+- 在本机执行命令前，想清楚权限与副作用（`open` 无害，`rm` 要谨慎）。
 
-## Usage 1: Open a page in the desktop browser (most common)
+## 用法一：在本机浏览器打开网页看效果（最常用）
 
-Three steps: start a static server (bound to the Tailscale interface) →
-self-check with curl → remote `open`.
+三步：起静态服务（绑定 Tailscale 接口）→ curl 自检 → 远程 `open`。
 
 ```bash
-PORT=8890                                        # pick a free port
-HTML_DIR=/path/to/html/dir                       # directory containing the HTML
-PAGE=index.html                                  # entry page
+PORT=8890                                        # 自定义端口，避免冲突
+HTML_DIR=/path/to/html/dir                       # 要展示的 HTML 所在目录
+PAGE=index.html                                  # 入口页面
 cat > /tmp/tailscale-remote-serve.mjs << EOF
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -73,64 +58,52 @@ SERVE_PID=$!
 echo "serve PID: $SERVE_PID"
 sleep 1
 
-# Self-check from the server
+# 服务器端自检
 curl -s -o /dev/null -w "%{http_code}" "http://${SERVER_TAILSCALE_IP}:${PORT}/${PAGE}"
 
-# Open in the desktop browser
+# 本机浏览器打开
 ssh -o BatchMode=yes "$MAC_HOST" "open 'http://${SERVER_TAILSCALE_IP}:${PORT}/${PAGE}'"
 ```
 
-The server stays in the background (PID in `$SERVE_PID`); `kill $SERVE_PID`
-when the user is done.
+完成后服务留在后台（PID 在 `$SERVE_PID`），用户看完后可 `kill $SERVE_PID`。
 
-**Variant: open a local file already on the desktop**
+**变体：直接打开本机上已有的本地文件**
 ```bash
 ssh -o BatchMode=yes "$MAC_HOST" "open ~/Downloads/xxx.html"
 ```
 
-## Usage 2: Transfer files both ways
+## 用法二：双向传文件
 
 ```bash
-# Server → desktop (defaults to the home directory)
+# 服务器 → 本机（默认传到家目录）
 scp -o BatchMode=yes /path/on/server/file.html "$MAC_HOST":~/Downloads/
 
-# Desktop → server
+# 本机 → 服务器
 scp -o BatchMode=yes "$MAC_HOST":~/Downloads/xxx.png /tmp/
 
-# Whole directory (recursive)
+# 整目录（递归）
 scp -r -o BatchMode=yes /path/on/server/dir "$MAC_HOST":~/Downloads/
 ```
 
-## Usage 3: Run remote commands on the desktop
+## 用法三：远程执行本机命令
 
 ```bash
-# Any command
+# 任意命令
 ssh -o BatchMode=yes "$MAC_HOST" 'echo hi; uname -a'
 
-# Check whether a file exists on the desktop
+# 看本机是否有文件
 ssh -o BatchMode=yes "$MAC_HOST" 'ls ~/Downloads/ | head'
 
-# Open an app or Finder
+# 打开应用/访达
 ssh -o BatchMode=yes "$MAC_HOST" 'open -a "Finder" ~/Downloads'
 ```
 
-## Troubleshooting
+## 排障
 
-| Symptom | Check |
+| 症状 | 检查 |
 |---|---|
-| SSH fails (Permission denied) | `tailscale status` shows the desktop online? Public key in the desktop's `~/.ssh/authorized_keys`? `ssh -o BatchMode=yes "$MAC_HOST" 'echo ok'` |
-| Port conflict | `ss -tlnp \| grep :PORT` to find the occupant, pick another port |
-| Browser didn't open | Confirm `open` exists on the desktop (`which open`); fall back to `open -a Safari <url>` |
-| Desktop offline | `tailscale status` — ask the user to reconnect Tailscale on the desktop |
-| Windows/Linux desktop | Not macOS: replace `open` with `xdg-open` (Linux) or `start` (Windows cmd) |
-
-## Install into your agent
-
-```bash
-# Copy to your agent's skills directory (choose per your agent)
-mkdir -p ~/.agents/skills ~/.claude/skills ~/.pi/agent/skills
-cp -r skills/tailscale-remote ~/.agents/skills/
-# Symlink for other agents:
-ln -s ~/.agents/skills/tailscale-remote ~/.claude/skills/tailscale-remote
-ln -s ~/.agents/skills/tailscale-remote ~/.pi/agent/skills/tailscale-remote
-```
+| SSH 失败（Permission denied） | `tailscale status` 确认本机在线；确认公钥已加入本机 `~/.ssh/authorized_keys`；`ssh -o BatchMode=yes "$MAC_HOST" 'echo ok'` |
+| 端口冲突 | `ss -tlnp \| grep :PORT` 找占用进程，换端口 |
+| 浏览器没弹出 | 确认本机 `open` 命令可用（`which open`）；改用 `open -a Safari <url>` |
+| 本机离线 | `tailscale status` 看本机状态；让用户在桌面端重连 Tailscale |
+| Windows/Linux 桌面 | 本机不是 macOS 时，把 `open` 换成 `xdg-open`（Linux）或 `start`（Windows cmd） |
