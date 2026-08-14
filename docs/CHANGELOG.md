@@ -1,6 +1,46 @@
-# 变更记录（v1 → v2）
+# 变更记录（v1 → v2 → v3）
 
 > 记录旧版的实际缺陷、修复方式与设计取舍，方便维护者理解每一次改动的动机。
+
+## v2 → v3（服务生命周期 + 配置收敛 + Skill 瘦身）
+
+### 动机
+
+1. **服务残留无解**：v2 的 PID 持久化依赖“记得清理”，Agent 会话关闭后服务无限残留（实测抓到挂了两周的残留进程）
+2. **隐私存放粗放**：配置 `~/.tailscale-remote.env` 权限 644、probe.sh 明文回显 IP/用户名
+3. **给 Agent 用成本高**：SKILL.md 每次全量读 6.7KB 含 100 行 shell；起服务要手工写 30 行 node
+
+### 改动
+
+| 改动 | 说明 |
+|---|---|
+| 配置收敛到 skill 目录 | `tailscale-remote.env` 与 SKILL.md 同级；权限 600；probe.sh 回显打码；旧配置自动迁移；.gitignore 忽略 |
+| 端口生命周期三层机制 | 滑动过期 TTL + 启动先杀旧 + cleanup.sh 一键清理（详见 ARCHITECTURE.md「服务生命周期」） |
+| serve.sh / cleanup.sh | 起服务一行命令（避端口 / 自检 / PID / 滑动过期 / --open）；手动清理一条命令 |
+| SKILL.md 瘦身 -45% | 命令模板外置 docs/COMMANDS.md，按需读取 |
+
+### 修掉的 bug
+
+| 缺陷 | 根因与修复 |
+|---|---|
+| `--ttl 0.03` 参数错乱 | bash `for arg in "$@"` 的迭代列表在循环前展开，循环内 shift 无效；改 while 循环 |
+| 服务正常自检却 502 | 环境 http_proxy 未排除 Tailscale IP；自检 curl 加 `--noproxy '*'` |
+
+### 设计取舍
+
+1. 滑动过期 > 固定定时器：用户正看时不被掐断，“有人用就一直活，没人用自动死”
+2. 单实例语义：展示场景一次一个页面，永远只有最新服务，PID / 清理逻辑简化
+3. 不用 systemd / launchd / timer：skill 场景不引入新依赖（macOS 无默认 timeout）
+
+### 验证方式
+
+```bash
+bash <skill目录>/scripts/serve.sh /tmp/xxx index.html        # 起服务 + 自检 200
+bash <skill目录>/scripts/serve.sh /tmp/xxx index.html        # 再次运行：先杀旧再起新
+bash <skill目录>/scripts/serve.sh /tmp/xxx index.html --ttl 0.03   # 3 秒后应自动退出
+ls /tmp/tailscale-remote-serve.pid                            # 应已随退出清理
+bash <skill目录>/scripts/cleanup.sh                           # 一键停止
+```
 
 ## v1 的实际缺陷
 
@@ -37,8 +77,8 @@ v1 的**命令是对的**，问题出在**假设不成立**：它假设使用者
 ## 验证方式
 
 ```bash
-# 首次（模拟全新环境）
-rm -f ~/.tailscale-remote.env
+# 首次（模拟全新环境；v2 时期配置在 ~/.tailscale-remote.env，v3 起在 skill 目录）
+rm -f <skill目录>/tailscale-remote.env
 bash scripts/probe.sh        # 应自动探测 IP 与用户名并写入 env
 source ~/.tailscale-remote.env
 ssh -o BatchMode=yes "$MAC_HOST" 'echo ok'   # 应一把通

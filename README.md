@@ -27,23 +27,25 @@ ln -s ~/.agents/skills/tailscale-remote-skill ~/.pi/agent/skills/tailscale-remot
 ## 快速开始（30 秒跑通）
 
 ```bash
-# ① 首次：自动探测 IP 与 SSH 用户名，结果写入 ~/.tailscale-remote.env
+# ① 首次：自动探测 IP 与 SSH 用户名，结果写入 skill 目录（<skill目录>/tailscale-remote.env）
 bash ~/.agents/skills/tailscale-remote-skill/scripts/probe.sh
-source ~/.tailscale-remote.env      # ② 每次会话先加载配置
+source ~/.agents/skills/tailscale-remote-skill/tailscale-remote.env   # ② 每次会话先加载配置
 # ③ 起静态服务并打开本机浏览器（完整命令见 SKILL.md「用法一」）
 ```
 
-已配置过时 probe.sh 直接复用，无需重复排查。
+> **skill 目录** = SKILL.md 所在目录。配置随 skill 同目录存放（不散落 home），复制/迁移 skill 时配置跟着走。
+已配置过（存在 `<skill目录>/tailscale-remote.env`）时 probe.sh 直接复用，无需重复排查。
 
 ## 前置条件（一次性配置）
 
 1. **Tailscale 组网**：服务器与本机都安装并登录 Tailscale，`tailscale status` 两台机器都在线（组网内互访无需公网、无需 SSH 隧道）
 2. **SSH 免密登录**：服务器生成密钥（`ssh-keygen -t ed25519`），公钥加入本机 `~/.ssh/authorized_keys`，本机开启远程登录（macOS：系统设置 → 通用 → 共享 → 远程登录）
    - ⚠️ SSH 用户名 = 本机操作系统登录名，**不是** `tailscale status` 的 User 列（那是账户 email 前缀）
-3. **配置持久化**（probe.sh 自动生成，也可手写）：
+3. **配置持久化**（probe.sh 自动生成，也可手写；位置 = skill 目录，与 SKILL.md 同级）：
 
 ```bash
-# ~/.tailscale-remote.env
+# <skill目录>/tailscale-remote.env
+# 配置文件含 IP 与用户名（权限 600），已加入仓库 .gitignore，切勿提交进 git
 export MAC_HOST="user@100.x.y.z"        # 本机：SSH 用户名@Tailscale IP
 export MAC_TAILSCALE_IP="100.x.y.z"     # 本机 Tailscale IP
 export SERVER_TAILSCALE_IP="100.x.y.z"  # 服务器 Tailscale IP（只监听该接口，不暴露公网）
