@@ -22,7 +22,7 @@ both ways, and run remote commands**.
 ```bash
 # Copy the skill into your agent's skills directory
 mkdir -p ~/.agents/skills
-cp -r skills/tailscale-remote ~/.agents/skills/
+cp -r SKILL.md ~/.agents/skills/tailscale-remote/SKILL.md
 # Symlink for other agents (Claude Code / Pi / etc.)
 ln -s ~/.agents/skills/tailscale-remote ~/.claude/skills/tailscale-remote
 ln -s ~/.agents/skills/tailscale-remote ~/.pi/agent/skills/tailscale-remote
@@ -43,7 +43,7 @@ export SERVER_TAILSCALE_IP="100.x.y.z"  # Server Tailscale IP
 
 ## Usage
 
-See [`skills/tailscale-remote/SKILL.md`](skills/tailscale-remote/SKILL.md) for
+See [`SKILL.md`](SKILL.md) for
 the full command recipes (static server + browser open, scp both ways, ssh
 remote commands), security rules (listen only on the Tailscale interface —
 never `0.0.0.0`), and troubleshooting.
@@ -53,7 +53,7 @@ never `0.0.0.0`), and troubleshooting.
 ```bash
 # 复制到你的 agent skills 目录
 mkdir -p ~/.agents/skills
-cp -r skills/tailscale-remote ~/.agents/skills/
+cp -r SKILL.md ~/.agents/skills/tailscale-remote/SKILL.md
 # 软链给其他 agent（Claude Code / Pi 等）
 ln -s ~/.agents/skills/tailscale-remote ~/.claude/skills/tailscale-remote
 ln -s ~/.agents/skills/tailscale-remote ~/.pi/agent/skills/tailscale-remote
@@ -74,7 +74,7 @@ export SERVER_TAILSCALE_IP="100.x.y.z"  # 服务器 Tailscale IP
 
 完整命令（静态服务 + 浏览器打开 / scp 双向传文件 / ssh 远程命令）、安全准则
 （服务只监听 Tailscale 接口，绝不监听 `0.0.0.0`）与排障，见
-[`skills/tailscale-remote/SKILL.md`](skills/tailscale-remote/SKILL.md)。
+[`SKILL.md`](SKILL.md)。
 
 ## License
 
