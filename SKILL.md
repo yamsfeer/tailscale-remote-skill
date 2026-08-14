@@ -1,5 +1,5 @@
 ---
-name: tailscale-remote
+name: tailscale-remote-skill
 description: 通过 Tailscale 组网从服务器远程操作本机桌面（macOS/Linux/Windows）：浏览器打开网页看效果、双向传文件、远程执行命令。适用于"把生成的 HTML 展示到用户浏览器""传文件到本机""在本机执行命令"等场景。需要服务器与本机已通过 Tailscale 组网，且服务器配置了到本机的 SSH 免密登录。
 ---
 
@@ -11,7 +11,7 @@ description: 通过 Tailscale 组网从服务器远程操作本机桌面（macOS
 
 ```bash
 # ① 首次：自动探测 IP 与 SSH 用户名，结果写入 ~/.tailscale-remote.env
-bash ~/.pi/agent/skills/tailscale-remote/scripts/probe.sh
+bash ~/.pi/agent/skills/tailscale-remote-skill/scripts/probe.sh
 source ~/.tailscale-remote.env      # ② 每次会话先加载配置
 
 # ③ 起静态服务并打开本机浏览器（用法一，见下）

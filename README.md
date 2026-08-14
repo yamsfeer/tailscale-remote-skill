@@ -16,19 +16,19 @@
 
 ```bash
 # 复制到你的 agent skills 目录（按你的 agent 选择）
-mkdir -p ~/.agents/skills/tailscale-remote
-cp SKILL.md ~/.agents/skills/tailscale-remote/SKILL.md
-cp -r scripts ~/.agents/skills/tailscale-remote/scripts
+mkdir -p ~/.agents/skills/tailscale-remote-skill
+cp SKILL.md ~/.agents/skills/tailscale-remote-skill/SKILL.md
+cp -r scripts ~/.agents/skills/tailscale-remote-skill/scripts
 # 软链给其他 agent（Claude Code / Pi 等）
-ln -s ~/.agents/skills/tailscale-remote ~/.claude/skills/tailscale-remote
-ln -s ~/.agents/skills/tailscale-remote ~/.pi/agent/skills/tailscale-remote
+ln -s ~/.agents/skills/tailscale-remote-skill ~/.claude/skills/tailscale-remote-skill
+ln -s ~/.agents/skills/tailscale-remote-skill ~/.pi/agent/skills/tailscale-remote-skill
 ```
 
 ## 快速开始（30 秒跑通）
 
 ```bash
 # ① 首次：自动探测 IP 与 SSH 用户名，结果写入 ~/.tailscale-remote.env
-bash ~/.agents/skills/tailscale-remote/scripts/probe.sh
+bash ~/.agents/skills/tailscale-remote-skill/scripts/probe.sh
 source ~/.tailscale-remote.env      # ② 每次会话先加载配置
 # ③ 起静态服务并打开本机浏览器（完整命令见 SKILL.md「用法一」）
 ```
